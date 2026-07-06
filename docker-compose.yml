@@ -1,0 +1,22 @@
+services:
+  backend:
+    build: ./backend
+    container_name: sd-backend
+    volumes:
+      - db_data:/app/data
+    env_file:
+      - ./backend/.env
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: sd-frontend
+    ports:
+      - "8000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  db_data:
