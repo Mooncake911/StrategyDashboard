@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
 
@@ -17,7 +19,15 @@ class Settings(BaseSettings):
 settings = Settings()
 
 # Автоисправление схемы: postgresql:// → postgresql+asyncpg:// (Neon отдаёт без +asyncpg)
+# + удаление параметров, несовместимых с asyncpg на Vercel
 if settings.DATABASE_URL.startswith("postgresql://"):
-    settings.DATABASE_URL = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+    raw = settings.DATABASE_URL
+    # замена схемы
+    raw = raw.replace("postgresql://", "postgresql+asyncpg://", 1)
+    # удаляем все query-параметры (старые asyncpg не поддерживают sslmode, channel_binding и т.д.)
+    parsed = urlparse(raw)
+    if parsed.query:
+        raw = raw.replace(f"?{parsed.query}", "")
+    settings.DATABASE_URL = raw
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
