@@ -3,7 +3,6 @@ FROM node:20-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json vite.config.js index.html ./
 RUN npm ci
-COPY public ./public
 COPY src ./src
 RUN npm run build
 

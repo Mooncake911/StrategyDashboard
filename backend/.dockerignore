@@ -2,3 +2,11 @@ __pycache__
 .venv
 .env
 data/
+.pytest_cache/
+tests/
+*.md
+pytest.ini
+.git/
+.gitignore
+Dockerfile
+.dockerignore
