@@ -8,3 +8,4 @@ docker-compose.yml
 **/nginx.conf
 **/__pycache__
 **/node_modules
+**/.env

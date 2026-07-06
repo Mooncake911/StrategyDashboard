@@ -383,3 +383,5 @@ cython_debug/
 #.idea/
 
 /backend/data/strategy.db
+.vercel
+.env*
