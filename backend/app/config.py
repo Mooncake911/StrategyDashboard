@@ -4,7 +4,10 @@ from pathlib import Path
 
 class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite+aiosqlite:///./data/strategy.db"
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:5173"]
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:5173",
+        "http://localhost:8000",
+    ]
     APP_TITLE: str = "StrategyDashboard API"
     APP_VERSION: str = "2.0.0"
 

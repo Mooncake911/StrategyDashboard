@@ -1,0 +1,10 @@
+.venv
+.idea
+.git
+*.md
+docker-compose.yml
+**/Dockerfile
+**/Dockerfile.*
+**/nginx.conf
+**/__pycache__
+**/node_modules

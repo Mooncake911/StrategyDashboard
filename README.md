@@ -120,4 +120,33 @@ frontend/
 ├── Dockerfile + nginx.conf
 
 docker-compose.yml           # backend + frontend
+
+api/                         # Vercel serverless entry
+├── index.py                 # импорт FastAPI app из backend
+└── requirements.txt         # Python-зависимости для Vercel
+
+vercel.json                  # Конфигурация Vercel-деплоя
+```
+
+## Деплой на Vercel
+
+```bash
+# 1. Установи Vercel CLI
+npm i -g vercel
+
+# 2. Укажи переменные окружения в Vercel Dashboard
+#    DATABASE_URL — PostgreSQL (Neon, Supabase, etc.)
+#    CORS_ORIGINS — домен твоего приложения
+#    Пример: "https://strategy-dashboard.vercel.app"
+
+# 3. Деплой
+vercel --prod
+```
+
+**Важно:** SQLite не работает на Vercel (серверлесс-функции эфемерны).  
+Перед деплоем создай PostgreSQL-базу (через [Neon](https://neon.tech), [Supabase](https://supabase.com) или Vercel Postgres) и пропиши `DATABASE_URL` в настройках проекта.
+
+Формат:  
+```
+DATABASE_URL=postgresql+asyncpg://user:password@host:5432/dbname
 ```
