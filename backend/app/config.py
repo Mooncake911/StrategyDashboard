@@ -15,4 +15,9 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Автоисправление схемы: postgresql:// → postgresql+asyncpg:// (Neon отдаёт без +asyncpg)
+if settings.DATABASE_URL.startswith("postgresql://"):
+    settings.DATABASE_URL = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
