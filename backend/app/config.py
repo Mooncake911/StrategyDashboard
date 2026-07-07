@@ -1,7 +1,6 @@
-from urllib.parse import urlparse
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import model_validator
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 
 class Settings(BaseSettings):
@@ -32,14 +31,24 @@ class Settings(BaseSettings):
             raw = raw.replace("postgresql://", "postgresql+asyncpg://", 1)
             parsed = urlparse(raw)
             if parsed.query:
-                raw = raw.replace(f"?{parsed.query}", "")
+                params = parse_qs(parsed.query, keep_blank_values=True)
+                if "sslmode" in params:
+                    params["ssl"] = params.pop("sslmode")
+                params.pop("channel_binding", None)
+                new_query = urlencode(params, doseq=True)
+                raw = urlunparse((
+                    parsed.scheme,
+                    parsed.netloc,
+                    parsed.path,
+                    parsed.params,
+                    new_query,
+                    parsed.fragment,
+                ))
 
         self.DATABASE_URL = raw
 
-        if isinstance(self.CORS_ORIGINS, str):
-            self.CORS_ORIGINS = [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
         if not self.CORS_ORIGINS:
-            raise ValueError("CORS_ORIGINS must be set (comma-separated)")
+            raise ValueError("CORS_ORIGINS must be set")
 
         return self
 
