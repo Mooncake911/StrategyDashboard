@@ -1,5 +1,5 @@
 import { useState, createContext, useContext } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, NavLink } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate, NavLink } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { colors, spacing, borderRadius, typography, BRAND } from './theme'
 import { useAuth } from './hooks/useAuth'
@@ -199,9 +199,9 @@ function AppRoutes() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <HashRouter>
         <AppRoutes />
-      </BrowserRouter>
+      </HashRouter>
     </QueryClientProvider>
   )
 }

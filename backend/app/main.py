@@ -52,6 +52,13 @@ class MaxBodySizeMiddleware(BaseHTTPMiddleware):
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        migrations = [
+            "ALTER TABLE contacts ADD COLUMN IF NOT EXISTS group_id INTEGER REFERENCES groups(id)",
+            "ALTER TABLE initiatives ADD COLUMN IF NOT EXISTS group_id INTEGER REFERENCES groups(id)",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name VARCHAR(255) DEFAULT ''",
+        ]
+        for stmt in migrations:
+            await conn.execute(sa_text(stmt))
     yield
     await engine.dispose()
 
