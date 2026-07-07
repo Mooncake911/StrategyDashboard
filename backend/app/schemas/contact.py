@@ -1,5 +1,4 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional
 
 
 class ContactBase(BaseModel):
@@ -13,19 +12,15 @@ class ContactBase(BaseModel):
     next_step: str = ""
 
 
-class ContactCreate(ContactBase):
-    pass
-
-
 class ContactUpdate(BaseModel):
-    account: Optional[str] = None
-    unit: Optional[str] = None
-    name: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    last_date: Optional[str] = None
-    topic: Optional[str] = None
-    next_step: Optional[str] = None
+    account: str | None = None
+    unit: str | None = None
+    name: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    last_date: str | None = None
+    topic: str | None = None
+    next_step: str | None = None
 
 
 class ContactRead(ContactBase):

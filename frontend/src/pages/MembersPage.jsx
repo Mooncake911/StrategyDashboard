@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import AsyncSelect from 'react-select/async'
-import { colors, spacing, borderRadius, typography, members as memberTheme } from '../theme'
+import { colors, borderRadius, typography, members as memberTheme } from '../theme'
 import TabToolbar from '../components/TabToolbar'
 import Table from '../components/Table'
 import { searchUsers } from '../api/users'

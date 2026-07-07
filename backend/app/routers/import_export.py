@@ -1,29 +1,38 @@
 from urllib.parse import quote
+
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select, delete as sa_delete
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config import settings
 from app.database import get_db
-from app.models.initiative import Initiative
 from app.models.contact import Contact
+from app.models.initiative import Initiative
 from app.models.user import User
-from app.services.excel_service import parse_workbook, generate_workbook
 from app.services.auth_config import current_user
+from app.services.excel_service import parse_workbook, generate_workbook
+from app.services.group_service import is_admin
 
 router = APIRouter(prefix="/api", tags=["import-export"])
 
 
 @router.post("/import")
 async def import_xlsx(
-    file: UploadFile = File(...),
-    group_id: int | None = Query(None),
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(current_user),
+        file: UploadFile = File(...),
+        group_id: int | None = Query(None),
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(current_user),
 ):
+    if group_id is not None and not await is_admin(db, group_id, user.id):
+        raise HTTPException(403, "Only admins can import to a group")
+
     if not file.filename or not file.filename.endswith((".xlsx", ".xls")):
         raise HTTPException(400, "Only .xlsx files are supported")
 
     file_bytes = await file.read()
+    if len(file_bytes) > settings.MAX_UPLOAD_SIZE:
+        raise HTTPException(413, "File too large. Maximum size is 10 MB.")
     try:
         initiatives_data, contacts_data = parse_workbook(file_bytes)
     except Exception as e:
@@ -36,8 +45,8 @@ async def import_xlsx(
         await db.execute(sa_delete(Initiative).where(Initiative.group_id == group_id))
         await db.execute(sa_delete(Contact).where(Contact.group_id == group_id))
     else:
-        await db.execute(sa_delete(Initiative))
-        await db.execute(sa_delete(Contact))
+        await db.execute(sa_delete(Initiative).where(Initiative.group_id.is_(None)))
+        await db.execute(sa_delete(Contact).where(Contact.group_id.is_(None)))
 
     for item in initiatives_data:
         item["group_id"] = group_id
@@ -56,9 +65,9 @@ async def import_xlsx(
 
 @router.get("/export")
 async def export_xlsx(
-    group_id: int | None = Query(None),
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(current_user),
+        group_id: int | None = Query(None),
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(current_user),
 ):
     stmt_i = select(Initiative).order_by(Initiative.id)
     stmt_c = select(Contact).order_by(Contact.id)
@@ -70,8 +79,8 @@ async def export_xlsx(
 
     initiatives_dict = [
         _row_to_dict(r, ["q", "account", "unit", "lpr", "action", "kpi",
-                          "priority", "status", "owner", "potential",
-                          "next_date", "comment"])
+                         "priority", "status", "owner", "potential",
+                         "next_date", "comment"])
         for r in initiatives_result.scalars().all()
     ]
     contacts_dict = [

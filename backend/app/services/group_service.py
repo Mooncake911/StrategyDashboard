@@ -4,7 +4,7 @@ from app.models.group_member import GroupMember
 
 
 async def get_membership(
-    db: AsyncSession, group_id: int, user_id: int
+        db: AsyncSession, group_id: int, user_id: int
 ) -> GroupMember | None:
     result = await db.execute(
         select(GroupMember).where(
@@ -13,12 +13,6 @@ async def get_membership(
         )
     )
     return result.scalar_one_or_none()
-
-
-async def is_member(db: AsyncSession, group_id: int, user_id: int) -> bool:
-    membership = await get_membership(db, group_id, user_id)
-    return membership is not None and membership.status == "approved"
-
 
 async def is_admin(db: AsyncSession, group_id: int, user_id: int) -> bool:
     membership = await get_membership(db, group_id, user_id)

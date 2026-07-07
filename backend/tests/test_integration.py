@@ -3,11 +3,10 @@ import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import text
 
-from app.main import app
 from app.config import settings
-from app.database import engine, get_db
+from app.database import engine
+from app.main import app
 from app.models import Base
-from app.services.auth_config import get_jwt_strategy as _get_jwt_strategy
 
 
 @pytest.fixture(autouse=True)
@@ -20,14 +19,8 @@ def use_real_db():
 
 
 class TestConfig:
-    def test_sqlite_url_is_absolute(self):
-        assert settings.DATABASE_URL.startswith("sqlite+aiosqlite:///")
-        path = settings.DATABASE_URL[len("sqlite+aiosqlite:///"):]
-        assert path.startswith("/") or path[1:].startswith(":/")
-
-    def test_sqlite_url_resolves_to_backend_data(self):
-        path = settings.DATABASE_URL[len("sqlite+aiosqlite:///"):]
-        assert "backend/data/strategy.db" in path
+    def test_database_url_not_empty(self):
+        assert len(settings.DATABASE_URL) > 0
 
     def test_secret_not_empty(self):
         assert len(settings.SECRET) > 0

@@ -74,24 +74,24 @@ python3 -m pytest tests -v
 
 ## API Endpoints
 
-| Метод | Путь | Описание |
-|-------|------|----------|
-| GET | /api/health | Проверка |
-| GET | /api/initiatives | Список инициатив (`?q=&account=&status=&search=`) |
-| POST | /api/initiatives | Создать инициативу |
-| GET | /api/initiatives/{id} | Получить инициативу |
-| PUT | /api/initiatives/{id} | Обновить инициативу |
-| DELETE | /api/initiatives/{id} | Удалить инициативу |
-| PATCH | /api/initiatives/{id}/status | Сменить статус |
-| GET | /api/contacts | Список контактов |
-| PUT | /api/contacts/{id} | Обновить контакт |
-| POST | /api/import | Импорт .xlsx |
-| GET | /api/export | Экспорт .xlsx |
-| GET | /api/analytics/kpi | KPI сводка |
-| GET | /api/analytics/by-quarter | По кварталам |
-| GET | /api/analytics/by-account | По аккаунтам |
-| GET | /api/analytics/by-owner | По ответственным |
-| GET | /api/analytics/status-distribution | По статусам |
+| Метод  | Путь                               | Описание                                          |
+|--------|------------------------------------|---------------------------------------------------|
+| GET    | /api/health                        | Проверка                                          |
+| GET    | /api/initiatives                   | Список инициатив (`?q=&account=&status=&search=`) |
+| POST   | /api/initiatives                   | Создать инициативу                                |
+| GET    | /api/initiatives/{id}              | Получить инициативу                               |
+| PUT    | /api/initiatives/{id}              | Обновить инициативу                               |
+| DELETE | /api/initiatives/{id}              | Удалить инициативу                                |
+| PATCH  | /api/initiatives/{id}/status       | Сменить статус                                    |
+| GET    | /api/contacts                      | Список контактов                                  |
+| PUT    | /api/contacts/{id}                 | Обновить контакт                                  |
+| POST   | /api/import                        | Импорт .xlsx                                      |
+| GET    | /api/export                        | Экспорт .xlsx                                     |
+| GET    | /api/analytics/kpi                 | KPI сводка                                        |
+| GET    | /api/analytics/by-quarter          | По кварталам                                      |
+| GET    | /api/analytics/by-account          | По аккаунтам                                      |
+| GET    | /api/analytics/by-owner            | По ответственным                                  |
+| GET    | /api/analytics/status-distribution | По статусам                                       |
 
 Swagger-документация: [http://localhost:8000/docs](http://localhost:8000/docs)
 

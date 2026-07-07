@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Q_META, STATUSES } from '../constants'
-import { colors, spacing, borderRadius, typography, shadows } from '../theme'
+import { colors, spacing, borderRadius, typography } from '../theme'
 
 function useKPI(rows) {
   return useMemo(() => {

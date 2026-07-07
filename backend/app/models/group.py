@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import Integer, String, Text, DateTime, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column
-from app.models.base import Base
+from app.models import Base
 
 
 class Group(Base):

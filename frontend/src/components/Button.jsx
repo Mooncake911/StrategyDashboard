@@ -1,4 +1,4 @@
-import { colors, borderRadius, typography, spacing } from '../theme'
+import { colors, borderRadius, typography } from '../theme'
 
 const variants = {
   primary: { background: colors.blue, color: colors.textOnDark },

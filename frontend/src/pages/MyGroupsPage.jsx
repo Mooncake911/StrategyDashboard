@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { colors, spacing, borderRadius, typography } from '../theme'
+import { colors, spacing, typography } from '../theme'
 import Button from '../components/Button'
 import Card from '../components/Card'
 import Input from '../components/Input'

@@ -9,7 +9,7 @@ from app.models.initiative import Initiative
 from app.models.contact import Contact
 from app.schemas.group import GroupCreate, GroupRead, MemberRead, RoleUpdate
 from app.services.auth_config import current_user
-from app.services.group_service import is_admin, get_membership
+from app.services.dependencies import get_object_or_404, require_admin
 
 router = APIRouter(prefix="/api/groups", tags=["groups"])
 
@@ -29,8 +29,10 @@ async def get_membership_or_404(db: AsyncSession, group_id: int, user_id: int):
 
 @router.get("", response_model=list[GroupRead])
 async def list_groups(
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(current_user),
+        skip: int = Query(0, ge=0),
+        limit: int = Query(100, ge=1, le=1000),
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(current_user),
 ):
     result = await db.execute(
         select(
@@ -44,6 +46,8 @@ async def list_groups(
         .outerjoin(GroupMember, GroupMember.group_id == Group.id)
         .group_by(Group.id)
         .order_by(Group.id)
+        .offset(skip)
+        .limit(limit)
     )
     rows = result.all()
 
@@ -73,13 +77,13 @@ async def list_groups(
 
 @router.post("", response_model=GroupRead, status_code=201)
 async def create_group(
-    body: GroupCreate,
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(current_user),
+        body: GroupCreate,
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(current_user),
 ):
     group = Group(name=body.name, description=body.description, created_by=user.id)
     db.add(group)
-    await db.commit()
+    await db.flush()
     await db.refresh(group)
 
     member = GroupMember(
@@ -103,14 +107,11 @@ async def create_group(
 
 @router.get("/{group_id}", response_model=GroupRead)
 async def get_group(
-    group_id: int,
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(current_user),
+        group_id: int,
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(current_user),
 ):
-    result = await db.execute(select(Group).where(Group.id == group_id))
-    group = result.scalar_one_or_none()
-    if not group:
-        raise HTTPException(404, "Group not found")
+    group = await get_object_or_404(db, Group, group_id, "Group not found")
 
     count_result = await db.execute(
         select(func.count(GroupMember.id)).where(
@@ -132,17 +133,13 @@ async def get_group(
 
 @router.put("/{group_id}")
 async def update_group(
-    group_id: int,
-    body: GroupCreate,
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(current_user),
+        group_id: int,
+        body: GroupCreate,
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(current_user),
 ):
-    if not await is_admin(db, group_id, user.id):
-        raise HTTPException(403, "Only admins can update the group")
-    result = await db.execute(select(Group).where(Group.id == group_id))
-    group = result.scalar_one_or_none()
-    if not group:
-        raise HTTPException(404, "Group not found")
+    await require_admin(group_id, db, user)
+    group = await get_object_or_404(db, Group, group_id, "Group not found")
     group.name = body.name
     group.description = body.description
     await db.commit()
@@ -151,16 +148,12 @@ async def update_group(
 
 @router.delete("/{group_id}", status_code=204)
 async def delete_group(
-    group_id: int,
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(current_user),
+        group_id: int,
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(current_user),
 ):
-    result = await db.execute(select(Group).where(Group.id == group_id))
-    group = result.scalar_one_or_none()
-    if not group:
-        raise HTTPException(404, "Group not found")
-    if not await is_admin(db, group_id, user.id):
-        raise HTTPException(403, "Only admins can delete the group")
+    group = await get_object_or_404(db, Group, group_id, "Group not found")
+    await require_admin(group_id, db, user)
     await db.execute(sa_delete(GroupMember).where(GroupMember.group_id == group_id))
     await db.execute(sa_delete(Initiative).where(Initiative.group_id == group_id))
     await db.execute(sa_delete(Contact).where(Contact.group_id == group_id))
@@ -170,18 +163,13 @@ async def delete_group(
 
 @router.post("/{group_id}/invite")
 async def invite_user(
-    group_id: int,
-    user_id: int = Query(...),
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(current_user),
+        group_id: int,
+        user_id: int = Query(...),
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(current_user),
 ):
-    if not await is_admin(db, group_id, user.id):
-        raise HTTPException(403, "Only admins can invite users")
-
-    result = await db.execute(select(Group).where(Group.id == group_id))
-    group = result.scalar_one_or_none()
-    if not group:
-        raise HTTPException(404, "Group not found")
+    await require_admin(group_id, db, user)
+    group = await get_object_or_404(db, Group, group_id, "Group not found")
 
     existing = await db.execute(
         select(GroupMember).where(
@@ -210,22 +198,24 @@ async def invite_user(
 
 @router.post("/{group_id}/join")
 async def join_group(
-    group_id: int,
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(current_user),
+        group_id: int,
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(current_user),
 ):
-    result = await db.execute(select(Group).where(Group.id == group_id))
-    group = result.scalar_one_or_none()
-    if not group:
-        raise HTTPException(404, "Group not found")
+    await get_object_or_404(db, Group, group_id, "Group not found")
 
-    existing = await db.execute(
+    existing_row = await db.execute(
         select(GroupMember).where(
             GroupMember.group_id == group_id,
             GroupMember.user_id == user.id,
         )
     )
-    if existing.scalar_one_or_none():
+    existing = existing_row.scalar_one_or_none()
+    if existing:
+        if existing.status == "rejected":
+            existing.status = "pending"
+            await db.commit()
+            return {"ok": True, "status": "pending"}
         raise HTTPException(400, "Already joined or pending")
 
     member = GroupMember(
@@ -241,11 +231,19 @@ async def join_group(
 
 @router.post("/{group_id}/leave")
 async def leave_group(
-    group_id: int,
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(current_user),
+        group_id: int,
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(current_user),
 ):
-    member = await get_membership_or_404(db, group_id, user.id)
+    result = await db.execute(
+        select(GroupMember).where(
+            GroupMember.group_id == group_id,
+            GroupMember.user_id == user.id,
+        )
+    )
+    member = result.scalar_one_or_none()
+    if not member:
+        raise HTTPException(404, "Member not found")
 
     if member.role == "admin":
         admin_count = await db.scalar(
@@ -274,9 +272,9 @@ async def leave_group(
 
 @router.get("/{group_id}/members", response_model=list[MemberRead])
 async def list_members(
-    group_id: int,
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(current_user),
+        group_id: int,
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(current_user),
 ):
     await get_membership_or_404(db, group_id, user.id)
 
@@ -302,13 +300,12 @@ async def list_members(
 
 @router.patch("/{group_id}/members/{user_id}/approve")
 async def approve_member(
-    group_id: int,
-    user_id: int,
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(current_user),
+        group_id: int,
+        user_id: int,
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(current_user),
 ):
-    if not await is_admin(db, group_id, user.id):
-        raise HTTPException(403, "Only admins can approve members")
+    await require_admin(group_id, db, user)
     result = await db.execute(
         select(GroupMember).where(
             GroupMember.group_id == group_id,
@@ -325,13 +322,12 @@ async def approve_member(
 
 @router.patch("/{group_id}/members/{user_id}/reject")
 async def reject_member(
-    group_id: int,
-    user_id: int,
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(current_user),
+        group_id: int,
+        user_id: int,
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(current_user),
 ):
-    if not await is_admin(db, group_id, user.id):
-        raise HTTPException(403, "Only admins can reject members")
+    await require_admin(group_id, db, user)
     result = await db.execute(
         select(GroupMember).where(
             GroupMember.group_id == group_id,
@@ -348,13 +344,12 @@ async def reject_member(
 
 @router.delete("/{group_id}/members/{user_id}", status_code=204)
 async def kick_member(
-    group_id: int,
-    user_id: int,
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(current_user),
+        group_id: int,
+        user_id: int,
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(current_user),
 ):
-    if not await is_admin(db, group_id, user.id):
-        raise HTTPException(403, "Only admins can kick members")
+    await require_admin(group_id, db, user)
     result = await db.execute(
         select(GroupMember).where(
             GroupMember.group_id == group_id,
@@ -372,21 +367,20 @@ async def kick_member(
 
 @router.put("/{group_id}/members/{user_id}/role")
 async def change_role(
-    group_id: int,
-    user_id: int,
-    body: RoleUpdate,
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(current_user),
+        group_id: int,
+        user_id: int,
+        body: RoleUpdate,
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(current_user),
 ):
     if body.role not in ("admin", "member"):
         raise HTTPException(400, "Invalid role")
 
-    result = await db.execute(select(Group).where(Group.id == group_id))
-    group = result.scalar_one_or_none()
-    if not group:
-        raise HTTPException(404, "Group not found")
-    if not await is_admin(db, group_id, user.id):
-        raise HTTPException(403, "Only admins can change roles")
+    await get_object_or_404(db, Group, group_id, "Group not found")
+    await require_admin(group_id, db, user)
+
+    if user_id == user.id:
+        raise HTTPException(400, "You cannot change your own role")
 
     result = await db.execute(
         select(GroupMember).where(

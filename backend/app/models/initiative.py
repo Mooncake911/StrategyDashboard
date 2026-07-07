@@ -1,7 +1,8 @@
 from datetime import datetime
-from sqlalchemy import Integer, String, Text, Float, DateTime, ForeignKey, func
+from sqlalchemy import Integer, String, Text, Float, DateTime, ForeignKey, Enum, func
 from sqlalchemy.orm import Mapped, mapped_column
-from app.models.base import Base
+from app.constants import InitiativeStatus, Priority
+from app.models import Base
 
 
 class Initiative(Base):
@@ -17,8 +18,8 @@ class Initiative(Base):
     lpr: Mapped[str] = mapped_column(Text, default="")
     action: Mapped[str] = mapped_column(Text, default="")
     kpi: Mapped[str] = mapped_column(Text, default="")
-    priority: Mapped[str] = mapped_column(String(10), default="high")
-    status: Mapped[str] = mapped_column(String(10), default="pending")
+    priority: Mapped[Priority] = mapped_column(Enum(Priority), default=Priority.HIGH)
+    status: Mapped[InitiativeStatus] = mapped_column(Enum(InitiativeStatus), default=InitiativeStatus.PENDING)
     owner: Mapped[str] = mapped_column(String(255), default="")
     potential: Mapped[float] = mapped_column(Float, default=0.0)
     next_date: Mapped[str] = mapped_column(String(50), default="")

@@ -1,7 +1,8 @@
 from datetime import datetime
-from sqlalchemy import Integer, String, DateTime, ForeignKey, UniqueConstraint, func
+from sqlalchemy import Integer, String, DateTime, ForeignKey, UniqueConstraint, Enum, func
 from sqlalchemy.orm import Mapped, mapped_column
-from app.models.base import Base
+from app.constants import MemberRole, MemberStatus
+from app.models import Base
 
 
 class GroupMember(Base):
@@ -10,8 +11,8 @@ class GroupMember(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     group_id: Mapped[int] = mapped_column(Integer, ForeignKey("groups.id"), nullable=False)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
-    role: Mapped[str] = mapped_column(String(20), default="member")
-    status: Mapped[str] = mapped_column(String(20), default="approved")
+    role: Mapped[MemberRole] = mapped_column(Enum(MemberRole), default=MemberRole.MEMBER)
+    status: Mapped[MemberStatus] = mapped_column(Enum(MemberStatus), default=MemberStatus.APPROVED)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now()
     )

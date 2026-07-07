@@ -90,10 +90,92 @@ class TestAuth:
         resp = await client.get("/api/auth/me", headers={"Authorization": "Bearer invalidtoken"})
         assert resp.status_code == 401
 
+    async def test_unauthorized_access_to_groups(self, client: AsyncClient):
+        resp = await client.get("/api/groups")
+        assert resp.status_code == 401
+
     async def test_unauthorized_access_to_initiatives(self, client: AsyncClient):
         resp = await client.get("/api/initiatives")
         assert resp.status_code == 401
 
-    async def test_unauthorized_access_to_groups(self, client: AsyncClient):
-        resp = await client.get("/api/groups")
+    async def test_unauthorized_access_to_contacts(self, client: AsyncClient):
+        resp = await client.get("/api/contacts")
         assert resp.status_code == 401
+
+    async def test_unauthorized_access_to_analytics(self, client: AsyncClient):
+        resp = await client.get("/api/analytics/kpi")
+        assert resp.status_code == 401
+
+    async def test_unauthorized_access_to_export(self, client: AsyncClient):
+        resp = await client.get("/api/export")
+        assert resp.status_code == 401
+
+    async def test_unauthorized_access_to_import(self, client: AsyncClient):
+        resp = await client.post("/api/import")
+        assert resp.status_code == 401
+
+    async def test_unauthorized_access_to_search_users(self, client: AsyncClient):
+        resp = await client.get("/api/users/search", params={"q": "test"})
+        assert resp.status_code == 401
+
+    async def test_unauthorized_access_to_get_group(self, client: AsyncClient):
+        resp = await client.get("/api/groups/1")
+        assert resp.status_code == 401
+
+    async def test_update_own_profile(self, client: AsyncClient):
+        await client.post("/api/auth/register", json={
+            "email": "update@test.com",
+            "password": "password123",
+            "full_name": "Old Name",
+        })
+        login = (await client.post("/api/auth/login", data={
+            "username": "update@test.com", "password": "password123",
+        })).json()
+        token = login["access_token"]
+
+        resp = await client.patch(
+            "/api/auth/me",
+            json={"full_name": "New Name"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["full_name"] == "New Name"
+
+    async def test_update_own_profile_twice(self, client: AsyncClient):
+        await client.post("/api/auth/register", json={
+            "email": "up2@test.com", "password": "pass123", "full_name": "First",
+        })
+        login = (await client.post("/api/auth/login", data={
+            "username": "up2@test.com", "password": "pass123",
+        })).json()
+        headers = {"Authorization": f"Bearer {login['access_token']}"}
+        resp1 = await client.patch("/api/auth/me", json={"full_name": "Second"}, headers=headers)
+        assert resp1.status_code == 200
+        resp2 = await client.patch("/api/auth/me", json={"full_name": "Third"}, headers=headers)
+        assert resp2.status_code == 200
+        assert resp2.json()["full_name"] == "Third"
+
+    async def test_update_user_unauthorized(self, client: AsyncClient):
+        resp = await client.patch("/api/auth/me", json={"full_name": "X"})
+        assert resp.status_code == 401
+
+    async def test_login_rate_limit(self, client: AsyncClient):
+        from app.main import app as _app
+        limiter = _app.state.limiter
+        limiter.enabled = True
+        limiter._storage.reset()
+
+        await client.post("/api/auth/register", json={
+            "email": "ratelimit@test.com", "password": "Str0ng!Pass", "full_name": "Rate",
+        })
+        for _ in range(5):
+            resp = await client.post("/api/auth/login", data={
+                "username": "ratelimit@test.com", "password": "wrongpass",
+            })
+            assert resp.status_code == 400
+        resp = await client.post("/api/auth/login", data={
+            "username": "ratelimit@test.com", "password": "wrongpass",
+        })
+        assert resp.status_code == 429
+        limiter._storage.reset()
+        limiter.enabled = False

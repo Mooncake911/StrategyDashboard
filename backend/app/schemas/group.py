@@ -1,11 +1,16 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from datetime import datetime
-from typing import Optional
+from app.constants import MemberRole, MemberStatus
 
 
 class GroupCreate(BaseModel):
     name: str
     description: str = ""
+
+    @field_validator("name")
+    @classmethod
+    def strip_name(cls, v: str) -> str:
+        return v.strip()
 
 
 class GroupRead(BaseModel):
@@ -14,8 +19,8 @@ class GroupRead(BaseModel):
     description: str
     created_by: int
     member_count: int = 0
-    my_status: str | None = None
-    my_role: str | None = None
+    my_status: MemberStatus | None = None
+    my_role: MemberRole | None = None
     created_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -26,14 +31,14 @@ class MemberRead(BaseModel):
     user_id: int
     email: str = ""
     full_name: str = ""
-    role: str
-    status: str
+    role: MemberRole
+    status: MemberStatus
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class RoleUpdate(BaseModel):
-    role: str
+    role: MemberRole
 
 
 class UserSearchRead(BaseModel):

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { colors, borderRadius, typography } from '../theme'
+import { colors, typography } from '../theme'
 
 export default function InlineCell({ value, onCommit, right, field, rowId, editable = true }) {
   const [editing, setEditing] = useState(false)

@@ -70,23 +70,23 @@ export default function GroupPage({ user }) {
 
   const handleApprove = wrap(async (userId) => {
     await approveMember(groupId, userId)
-    invalidateMembers()
+    await invalidateMembers()
   })
 
   const handleReject = wrap(async (userId) => {
     await rejectMember(groupId, userId)
-    invalidateMembers()
+    await invalidateMembers()
   })
 
   const handleKick = wrap(async (userId) => {
     if (!window.confirm('Исключить участника?')) return
     await kickMember(groupId, userId)
-    invalidateMembers()
+    await invalidateMembers()
   })
 
   const handleRole = wrap(async (userId, role) => {
     await changeRole(groupId, userId, role)
-    invalidateMembers()
+    await invalidateMembers()
   })
 
   const handleImport = async (e) => {
@@ -96,8 +96,8 @@ export default function GroupPage({ user }) {
     try {
       const res = await importFile(file, groupId)
       setImportMsg(`Импортировано: ${res.imported} инициатив, ${res.contacts} контактов`)
-      reload()
-      reloadContacts()
+      await reload()
+      await reloadContacts()
     } catch (err) {
       setImportMsg('Ошибка: ' + (err.response?.data?.detail || err.message))
     }

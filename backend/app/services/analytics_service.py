@@ -1,18 +1,12 @@
+from typing import Any, Sequence
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.initiative import Initiative
-
-STATUS_LABELS = {
-    "pending": "Не начат",
-    "active": "В работе",
-    "waiting": "Ожидание",
-    "done": "Выполнен",
-    "risk": "Под риском",
-}
-Q_ORDER = ["Q1", "Q2", "Q3", "Q4"]
+from app.constants import STATUS_LABELS, Q_ORDER
 
 
-async def _fetch_all(db: AsyncSession) -> list:
+async def _fetch_all(db: AsyncSession) -> Sequence[Any]:
     result = await db.execute(select(Initiative))
     return result.scalars().all()
 

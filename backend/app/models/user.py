@@ -1,7 +1,7 @@
 from sqlalchemy import Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 from fastapi_users.db import SQLAlchemyBaseUserTable
-from app.models.base import Base
+from app.models import Base
 
 
 class User(SQLAlchemyBaseUserTable[int], Base):

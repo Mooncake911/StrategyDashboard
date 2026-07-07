@@ -61,6 +61,23 @@ class TestGroups:
         resp = await client.delete(f"/api/groups/{created['id']}", headers=user_headers)
         assert resp.status_code == 403
 
+    async def test_delete_group_cascade(self, client: AsyncClient, auth_headers: dict):
+        created = (await client.post("/api/groups", json={"name": "Cascade"}, headers=auth_headers)).json()
+        gid = created["id"]
+
+        await client.post("/api/initiatives", json={
+            "account": "CascadeTest", "action": "Test", "group_id": gid,
+        }, headers=auth_headers)
+
+        resp = await client.delete(f"/api/groups/{gid}", headers=auth_headers)
+        assert resp.status_code == 204
+
+        resp = await client.get(f"/api/groups/{gid}", headers=auth_headers)
+        assert resp.status_code == 404
+
+        initiatives = (await client.get("/api/initiatives", headers=auth_headers)).json()
+        assert all(i["group_id"] != gid for i in initiatives)
+
     async def test_join_group(self, client: AsyncClient, auth_headers: dict, user_headers: dict):
         created = (await client.post("/api/groups", json={"name": "Team"}, headers=auth_headers)).json()
         resp = await client.post(f"/api/groups/{created['id']}/join", headers=user_headers)
@@ -74,22 +91,50 @@ class TestGroups:
 
     async def test_leave_group(self, client: AsyncClient, auth_headers: dict, user_headers: dict):
         created = (await client.post("/api/groups", json={"name": "Team"}, headers=auth_headers)).json()
-        await client.post(f"/api/groups/{created['id']}/join", headers=user_headers)
+        gid = created["id"]
+        await client.post(f"/api/groups/{gid}/join", headers=user_headers)
 
-        resp = await client.post(f"/api/groups/{created['id']}/leave", headers=auth_headers)
+        members = (await client.get(f"/api/groups/{gid}/members", headers=auth_headers)).json()
+        pending = [m for m in members if m["status"] == "pending"][0]
+        await client.patch(f"/api/groups/{gid}/members/{pending['user_id']}/approve", headers=auth_headers)
+
+        resp = await client.post(f"/api/groups/{gid}/leave", headers=user_headers)
         assert resp.status_code == 200
 
     async def test_leave_group_not_member(self, client: AsyncClient, auth_headers: dict, user_headers: dict):
         created = (await client.post("/api/groups", json={"name": "Team"}, headers=auth_headers)).json()
         resp = await client.post(f"/api/groups/{created['id']}/leave", headers=user_headers)
-        assert resp.status_code == 403
+        assert resp.status_code == 404
+
+    async def test_leave_group_pending(self, client: AsyncClient, auth_headers: dict, user_headers: dict):
+        created = (await client.post("/api/groups", json={"name": "Team"}, headers=auth_headers)).json()
+        gid = created["id"]
+        await client.post(f"/api/groups/{gid}/join", headers=user_headers)
+
+        resp = await client.post(f"/api/groups/{gid}/leave", headers=user_headers)
+        assert resp.status_code == 200
+
+    async def test_join_after_reject(self, client: AsyncClient, auth_headers: dict, user_headers: dict):
+        created = (await client.post("/api/groups", json={"name": "Team"}, headers=auth_headers)).json()
+        gid = created["id"]
+
+        await client.post(f"/api/groups/{gid}/join", headers=user_headers)
+        members = (await client.get(f"/api/groups/{gid}/members", headers=auth_headers)).json()
+        pending = [m for m in members if m["status"] == "pending"][0]
+        await client.patch(f"/api/groups/{gid}/members/{pending['user_id']}/reject", headers=auth_headers)
+
+        resp = await client.post(f"/api/groups/{gid}/join", headers=user_headers)
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "pending"
 
     async def test_approve_member(self, client: AsyncClient, auth_headers: dict, user_headers: dict):
         created = (await client.post("/api/groups", json={"name": "Team"}, headers=auth_headers)).json()
         gid = created["id"]
         await client.post(f"/api/groups/{gid}/join", headers=user_headers)
 
-        resp = await client.patch(f"/api/groups/{gid}/members/{1}/approve", headers=auth_headers)
+        members = (await client.get(f"/api/groups/{gid}/members", headers=auth_headers)).json()
+        pending = [m for m in members if m["status"] == "pending"][0]
+        resp = await client.patch(f"/api/groups/{gid}/members/{pending['user_id']}/approve", headers=auth_headers)
         assert resp.status_code == 200
 
     async def test_approve_member_non_admin(self, client: AsyncClient, auth_headers: dict, user_headers: dict):
@@ -97,7 +142,12 @@ class TestGroups:
         gid = created["id"]
         await client.post(f"/api/groups/{gid}/join", headers=user_headers)
 
-        resp = await client.patch(f"/api/groups/{gid}/members/{1}/approve", headers=user_headers)
+        members = (await client.get(f"/api/groups/{gid}/members", headers=auth_headers)).json()
+        pending = [m for m in members if m["status"] == "pending"][0]
+
+        resp = await client.patch(
+            f"/api/groups/{gid}/members/{pending['user_id']}/approve", headers=user_headers,
+        )
         assert resp.status_code == 403
 
     async def test_reject_member(self, client: AsyncClient, auth_headers: dict, user_headers: dict):
@@ -105,7 +155,9 @@ class TestGroups:
         gid = created["id"]
         await client.post(f"/api/groups/{gid}/join", headers=user_headers)
 
-        resp = await client.patch(f"/api/groups/{gid}/members/{1}/reject", headers=auth_headers)
+        members = (await client.get(f"/api/groups/{gid}/members", headers=auth_headers)).json()
+        pending = [m for m in members if m["status"] == "pending"][0]
+        resp = await client.patch(f"/api/groups/{gid}/members/{pending['user_id']}/reject", headers=auth_headers)
         assert resp.status_code == 200
 
     async def test_kick_member(self, client: AsyncClient, admin_headers: dict, user_headers: dict):
@@ -131,7 +183,11 @@ class TestGroups:
     async def test_kick_member_non_admin(self, client: AsyncClient, auth_headers: dict, user_headers: dict):
         created = (await client.post("/api/groups", json={"name": "Team"}, headers=auth_headers)).json()
         gid = created["id"]
-        resp = await client.delete(f"/api/groups/{gid}/members/1", headers=user_headers)
+
+        members = (await client.get(f"/api/groups/{gid}/members", headers=auth_headers)).json()
+        admin_member = members[0]
+
+        resp = await client.delete(f"/api/groups/{gid}/members/{admin_member['user_id']}", headers=user_headers)
         assert resp.status_code == 403
 
     async def test_list_members(self, client: AsyncClient, auth_headers: dict):
@@ -147,16 +203,44 @@ class TestGroups:
         created = (await client.post("/api/groups", json={"name": "Team"}, headers=admin_headers)).json()
         gid = created["id"]
 
-        # Get creator and other user
+        await client.post(f"/api/groups/{gid}/join", headers=user_headers)
         members = (await client.get(f"/api/groups/{gid}/members", headers=admin_headers)).json()
+        pending = [m for m in members if m["status"] == "pending"][0]
+        await client.patch(f"/api/groups/{gid}/members/{pending['user_id']}/approve", headers=admin_headers)
 
-        resp = await client.put(f"/api/groups/{gid}/members/{1}/role", json={"role": "member"}, headers=admin_headers)
+        members = (await client.get(f"/api/groups/{gid}/members", headers=admin_headers)).json()
+        target = [m for m in members if m["role"] == "member"][0]
+
+        resp = await client.put(
+            f"/api/groups/{gid}/members/{target['user_id']}/role",
+            json={"role": "admin"}, headers=admin_headers,
+        )
         assert resp.status_code == 200
 
-    async def test_change_role_non_creator(self, client: AsyncClient, auth_headers: dict, user_headers: dict):
+    async def test_change_role_self(self, client: AsyncClient, auth_headers: dict):
         created = (await client.post("/api/groups", json={"name": "Team"}, headers=auth_headers)).json()
         gid = created["id"]
-        resp = await client.put(f"/api/groups/{gid}/members/1/role", json={"role": "admin"}, headers=user_headers)
+
+        members = (await client.get(f"/api/groups/{gid}/members", headers=auth_headers)).json()
+        admin_member = members[0]
+
+        resp = await client.put(
+            f"/api/groups/{gid}/members/{admin_member['user_id']}/role",
+            json={"role": "member"}, headers=auth_headers,
+        )
+        assert resp.status_code == 400
+
+    async def test_change_role_non_admin(self, client: AsyncClient, auth_headers: dict, user_headers: dict):
+        created = (await client.post("/api/groups", json={"name": "Team"}, headers=auth_headers)).json()
+        gid = created["id"]
+
+        members = (await client.get(f"/api/groups/{gid}/members", headers=auth_headers)).json()
+        admin_member = members[0]
+
+        resp = await client.put(
+            f"/api/groups/{gid}/members/{admin_member['user_id']}/role",
+            json={"role": "admin"}, headers=user_headers,
+        )
         assert resp.status_code == 403
 
     async def test_invite_user(self, client: AsyncClient, auth_headers: dict):
@@ -177,12 +261,29 @@ class TestGroups:
         assert resp.status_code == 200
         assert "invited" in resp.json()
 
+    async def test_invite_user_non_admin(self, client: AsyncClient, auth_headers: dict, user_headers: dict):
+        created = (await client.post("/api/groups", json={"name": "Team"}, headers=auth_headers)).json()
+        gid = created["id"]
+
+        resp = await client.post(f"/api/groups/{gid}/invite?user_id=1", headers=user_headers)
+        assert resp.status_code == 403
+
     async def test_invite_twice(self, client: AsyncClient, auth_headers: dict):
         created = (await client.post("/api/groups", json={"name": "Team"}, headers=auth_headers)).json()
         gid = created["id"]
 
-        await client.post(f"/api/groups/{gid}/invite?user_id=1", headers=auth_headers)
-        resp = await client.post(f"/api/groups/{gid}/invite?user_id=1", headers=auth_headers)
+        await client.post("/api/auth/register", json={
+            "email": "dup_invite@test.com", "password": "pass123", "full_name": "Dup",
+        })
+        login = (await client.post("/api/auth/login", data={
+            "username": "dup_invite@test.com", "password": "pass123",
+        })).json()
+        invitee_id = (await client.get("/api/auth/me", headers={
+            "Authorization": f"Bearer {login['access_token']}",
+        })).json()["id"]
+
+        await client.post(f"/api/groups/{gid}/invite?user_id={invitee_id}", headers=auth_headers)
+        resp = await client.post(f"/api/groups/{gid}/invite?user_id={invitee_id}", headers=auth_headers)
         assert resp.status_code == 400
 
     async def test_search_users(self, client: AsyncClient, auth_headers: dict):

@@ -1,20 +1,21 @@
 import asyncio
+import os
 from typing import AsyncGenerator
-import pytest
+
+# Test settings — must be set before importing app modules
+os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite://")
+os.environ.setdefault("SECRET", "test-secret-key-for-pytest-with-32chars")
+
+import bcrypt as _bcrypt
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
-from app.main import app
 from app.database import get_db
-from app.models.base import Base
+from app.main import app
+from app.models import Base
 from app.models.user import User
-from app.models.group import Group
-from app.models.group_member import GroupMember
-from app.models.initiative import Initiative
-from app.models.contact import Contact
 from app.services.auth_config import get_jwt_strategy as _get_jwt_strategy
-import bcrypt as _bcrypt
 
 TEST_DATABASE_URL = "sqlite+aiosqlite://"
 
@@ -50,6 +51,9 @@ async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 app.dependency_overrides[get_db] = override_get_db
+
+# Disable rate limiter in tests to avoid cross-test interference
+app.state.limiter.enabled = False
 
 
 async def _make_user(

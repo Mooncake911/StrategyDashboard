@@ -2,27 +2,7 @@ from io import BytesIO
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
-
-Q_META = {
-    "Q1": {"label": "1 квартал"},
-    "Q2": {"label": "2 квартал"},
-    "Q3": {"label": "3 квартал"},
-    "Q4": {"label": "4 квартал"},
-}
-
-HEADERS = [
-    "Квартал", "Аккаунт", "Объект / Подразделение", "Целевые ЛПР",
-    "Ключевое действие", "Измеримый результат (KPI)", "Приоритет", "Статус",
-    "Ответственный", "Потенциал, ₽ млн", "Дата след. шага", "Комментарий",
-]
-CONTACT_HEADERS = [
-    "Аккаунт", "Объект", "ФИО / Должность", "Email", "Телефон",
-    "Последний контакт", "Тема", "Следующий шаг",
-]
-STATUS_LABELS = {
-    "pending": "⬜ Не начат", "active": "🔵 В работе",
-    "waiting": "🟡 Ожидание", "done": "🟢 Выполнен", "risk": "🔴 Под риском",
-}
+from app.constants import Q_META, HEADERS, CONTACT_HEADERS, STATUS_LABELS_EMOJI, InitiativeStatus, Priority
 
 HEADER_FILL = PatternFill("solid", fgColor="1A2C4E")
 HEADER_FONT = Font(color="FFFFFF", bold=True, size=10)
@@ -64,8 +44,8 @@ def _parse_roadmap_sheet(ws) -> list[dict]:
             "lpr": str(values[3]).strip() if len(values) > 3 else "",
             "action": str(values[4]).strip() if len(values) > 4 else "",
             "kpi": str(values[5]).strip() if len(values) > 5 else "",
-            "priority": _norm_priority(str(values[6])) if len(values) > 6 else "high",
-            "status": _norm_status(str(values[7])) if len(values) > 7 else "pending",
+            "priority": _norm_priority(str(values[6])) if len(values) > 6 else Priority.HIGH,
+            "status": _norm_status(str(values[7])) if len(values) > 7 else InitiativeStatus.PENDING,
             "owner": str(values[8]).strip() if len(values) > 8 else "",
             "potential": _parse_float(values[9]) if len(values) > 9 else 0,
             "next_date": str(values[10]).strip() if len(values) > 10 else "",
@@ -104,21 +84,21 @@ def _norm_quarter(v: str) -> str:
     return "Q1"
 
 
-def _norm_priority(v: str) -> str:
-    return "critical" if "крит" in v.lower() else "high"
+def _norm_priority(v: str) -> Priority:
+    return Priority.CRITICAL if "крит" in v.lower() else Priority.HIGH
 
 
-def _norm_status(v: str) -> str:
+def _norm_status(v: str) -> InitiativeStatus:
     s = v.lower()
     if "работ" in s:
-        return "active"
+        return InitiativeStatus.ACTIVE
     if "ожид" in s or "жд" in s:
-        return "waiting"
+        return InitiativeStatus.WAITING
     if "выполн" in s:
-        return "done"
+        return InitiativeStatus.DONE
     if "риск" in s:
-        return "risk"
-    return "pending"
+        return InitiativeStatus.RISK
+    return InitiativeStatus.PENDING
 
 
 def _parse_float(v) -> float:
@@ -168,7 +148,7 @@ def _build_roadmap_sheet(wb, initiatives: list[dict]):
             row_num += 1
 
         priority_label = "🔴 Критический" if row["priority"] == "critical" else "🟡 Высокий"
-        status_label = STATUS_LABELS.get(row["status"], row["status"])
+        status_label = STATUS_LABELS_EMOJI.get(row["status"], row["status"])
 
         values = [
             Q_META[row["q"]]["label"],

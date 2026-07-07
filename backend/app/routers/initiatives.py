@@ -8,24 +8,30 @@ from app.schemas.initiative import (
     InitiativeCreate, InitiativeRead, InitiativeUpdate, StatusUpdate,
 )
 from app.services.auth_config import current_user
-from app.services.group_service import is_admin
+from app.services.dependencies import get_object_or_404
+from app.services.group_service import is_admin, get_membership
 
 router = APIRouter(prefix="/api/initiatives", tags=["initiatives"])
 
 
 @router.get("", response_model=list[InitiativeRead])
 async def list_initiatives(
-    group_id: int | None = Query(None),
-    q: str | None = Query(None),
-    account: str | None = Query(None),
-    status: str | None = Query(None),
-    search: str | None = Query(None),
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(current_user),
+        group_id: int | None = Query(None),
+        q: str | None = Query(None),
+        account: str | None = Query(None),
+        status: str | None = Query(None),
+        search: str | None = Query(None),
+        skip: int = Query(0, ge=0),
+        limit: int = Query(100, ge=1, le=1000),
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(current_user),
 ):
-    stmt = select(Initiative).order_by(Initiative.id)
+    stmt = select(Initiative).order_by(Initiative.id).offset(skip).limit(limit)
 
     if group_id is not None:
+        member = await get_membership(db, group_id, user.id)
+        if not member or member.status != "approved":
+            raise HTTPException(403, "You are not a member of this group")
         stmt = stmt.where(Initiative.group_id == group_id)
 
     if q:
@@ -52,9 +58,9 @@ async def list_initiatives(
 
 @router.post("", response_model=InitiativeRead, status_code=201)
 async def create_initiative(
-    body: InitiativeCreate,
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(current_user),
+        body: InitiativeCreate,
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(current_user),
 ):
     if body.group_id is not None and not await is_admin(db, body.group_id, user.id):
         raise HTTPException(403, "Only admins can create initiatives")
@@ -67,28 +73,21 @@ async def create_initiative(
 
 @router.get("/{initiative_id}", response_model=InitiativeRead)
 async def get_initiative(
-    initiative_id: int,
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(current_user),
+        initiative_id: int,
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(current_user),
 ):
-    result = await db.execute(select(Initiative).where(Initiative.id == initiative_id))
-    initiative = result.scalar_one_or_none()
-    if not initiative:
-        raise HTTPException(404, "Initiative not found")
-    return initiative
+    return await get_object_or_404(db, Initiative, initiative_id, "Initiative not found")
 
 
 @router.put("/{initiative_id}", response_model=InitiativeRead)
 async def update_initiative(
-    initiative_id: int,
-    body: InitiativeUpdate,
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(current_user),
+        initiative_id: int,
+        body: InitiativeUpdate,
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(current_user),
 ):
-    result = await db.execute(select(Initiative).where(Initiative.id == initiative_id))
-    initiative = result.scalar_one_or_none()
-    if not initiative:
-        raise HTTPException(404, "Initiative not found")
+    initiative = await get_object_or_404(db, Initiative, initiative_id, "Initiative not found")
     if initiative.group_id is not None and not await is_admin(db, initiative.group_id, user.id):
         raise HTTPException(403, "Only admins can update initiatives")
     for key, value in body.model_dump(exclude_unset=True).items():
@@ -100,14 +99,11 @@ async def update_initiative(
 
 @router.delete("/{initiative_id}", status_code=204)
 async def delete_initiative(
-    initiative_id: int,
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(current_user),
+        initiative_id: int,
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(current_user),
 ):
-    result = await db.execute(select(Initiative).where(Initiative.id == initiative_id))
-    initiative = result.scalar_one_or_none()
-    if not initiative:
-        raise HTTPException(404, "Initiative not found")
+    initiative = await get_object_or_404(db, Initiative, initiative_id, "Initiative not found")
     if initiative.group_id is not None and not await is_admin(db, initiative.group_id, user.id):
         raise HTTPException(403, "Only admins can delete initiatives")
     await db.delete(initiative)
@@ -116,15 +112,12 @@ async def delete_initiative(
 
 @router.patch("/{initiative_id}/status", response_model=InitiativeRead)
 async def set_initiative_status(
-    initiative_id: int,
-    body: StatusUpdate,
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(current_user),
+        initiative_id: int,
+        body: StatusUpdate,
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(current_user),
 ):
-    result = await db.execute(select(Initiative).where(Initiative.id == initiative_id))
-    initiative = result.scalar_one_or_none()
-    if not initiative:
-        raise HTTPException(404, "Initiative not found")
+    initiative = await get_object_or_404(db, Initiative, initiative_id, "Initiative not found")
     if initiative.group_id is not None and not await is_admin(db, initiative.group_id, user.id):
         raise HTTPException(403, "Only admins can change status")
     initiative.status = body.status

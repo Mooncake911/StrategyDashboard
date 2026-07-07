@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
-from typing import Optional
+from app.constants import InitiativeStatus, Priority
 
 
 class InitiativeBase(BaseModel):
@@ -10,8 +10,8 @@ class InitiativeBase(BaseModel):
     lpr: str = ""
     action: str = ""
     kpi: str = ""
-    priority: str = "high"
-    status: str = "pending"
+    priority: Priority = Priority.HIGH
+    status: InitiativeStatus = InitiativeStatus.PENDING
     owner: str = ""
     potential: float = 0.0
     next_date: str = ""
@@ -24,22 +24,22 @@ class InitiativeCreate(InitiativeBase):
 
 
 class InitiativeUpdate(BaseModel):
-    q: Optional[str] = None
-    account: Optional[str] = None
-    unit: Optional[str] = None
-    lpr: Optional[str] = None
-    action: Optional[str] = None
-    kpi: Optional[str] = None
-    priority: Optional[str] = None
-    status: Optional[str] = None
-    owner: Optional[str] = None
-    potential: Optional[float] = None
-    next_date: Optional[str] = None
-    comment: Optional[str] = None
+    q: str | None = None
+    account: str | None = None
+    unit: str | None = None
+    lpr: str | None = None
+    action: str | None = None
+    kpi: str | None = None
+    priority: Priority | None = None
+    status: InitiativeStatus | None = None
+    owner: str | None = None
+    potential: float | None = None
+    next_date: str | None = None
+    comment: str | None = None
 
 
 class StatusUpdate(BaseModel):
-    status: str
+    status: InitiativeStatus
 
 
 class InitiativeRead(InitiativeBase):

@@ -1,7 +1,7 @@
-import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.initiative import Initiative
 from tests.conftest import SAMPLE_INITIATIVE
 
@@ -121,3 +121,19 @@ class TestInitiatives:
         db_row = result.scalar_one()
         assert db_row.account == "Газпром нефть"
         assert db_row.potential == 15.5
+
+    async def test_pagination(self, client: AsyncClient, auth_headers: dict):
+        for i in range(5):
+            await client.post("/api/initiatives", json=SAMPLE_INITIATIVE | {"account": f"Pagination_{i}"}, headers=auth_headers)
+
+        resp = await client.get("/api/initiatives", params={"skip": 0, "limit": 2}, headers=auth_headers)
+        data = resp.json()
+        assert len(data) == 2
+
+        resp = await client.get("/api/initiatives", params={"skip": 2, "limit": 2}, headers=auth_headers)
+        data = resp.json()
+        assert len(data) == 2
+        assert data[0]["account"] == "Pagination_2"
+
+        resp = await client.get("/api/initiatives", params={"skip": 10, "limit": 5}, headers=auth_headers)
+        assert resp.json() == []

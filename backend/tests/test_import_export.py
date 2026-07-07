@@ -4,7 +4,8 @@ from openpyxl import load_workbook
 
 
 class TestImportExport:
-    async def _create_sample_data(self, client: AsyncClient, headers: dict):
+    @staticmethod
+    async def _create_sample_data(client: AsyncClient, headers: dict):
         for i in range(3):
             await client.post("/api/initiatives", json={
                 "q": f"Q{i+1}",
@@ -81,3 +82,13 @@ class TestImportExport:
         items = (await client.get("/api/initiatives", headers=auth_headers)).json()
         assert len(items) == 1
         assert items[0]["account"] == "New"
+
+    async def test_import_file_too_large(self, client: AsyncClient, auth_headers: dict):
+        from app.config import settings
+        large_data = b"x" * (settings.MAX_UPLOAD_SIZE + 1)
+        resp = await client.post(
+            "/api/import",
+            files={"file": ("large.xlsx", large_data, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 413

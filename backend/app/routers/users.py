@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.database import get_db
 from app.models.user import User
 from app.schemas.group import UserSearchRead
@@ -11,9 +12,9 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 
 @router.get("/search", response_model=list[UserSearchRead])
 async def search_users(
-    q: str = Query("", min_length=1),
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(current_user),
+        q: str = Query("", min_length=1),
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(current_user),
 ):
     pattern = f"%{q}%"
     stmt = (

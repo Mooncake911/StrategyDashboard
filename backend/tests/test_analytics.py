@@ -11,7 +11,8 @@ SAMPLE_INITIATIVES = [
 
 
 class TestAnalytics:
-    async def _seed(self, client: AsyncClient, headers: dict):
+    @staticmethod
+    async def _seed(client: AsyncClient, headers: dict):
         for item in SAMPLE_INITIATIVES:
             await client.post("/api/initiatives", json=item, headers=headers)
 

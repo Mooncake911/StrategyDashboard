@@ -1,7 +1,7 @@
 from fastapi_users import BaseUserManager, FastAPIUsers, IntegerIDMixin
 from fastapi_users.authentication import BearerTransport, JWTStrategy, AuthenticationBackend
 from fastapi_users.db import SQLAlchemyUserDatabase
-from fastapi import Depends, Request
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.user import User
@@ -11,7 +11,7 @@ bearer_transport = BearerTransport(tokenUrl="/api/auth/login")
 
 
 def get_jwt_strategy() -> JWTStrategy:
-    return JWTStrategy(secret=settings.SECRET, lifetime_seconds=86400 * 7)
+    return JWTStrategy(secret=settings.SECRET, lifetime_seconds=86400 * 1)
 
 
 auth_backend = AuthenticationBackend(
@@ -36,4 +36,3 @@ async def get_user_manager(user_db: SQLAlchemyUserDatabase = Depends(get_user_db
 fastapi_users = FastAPIUsers[User, int](get_user_manager, [auth_backend])
 
 current_user = fastapi_users.current_user(active=True)
-optional_user = fastapi_users.current_user(optional=True)
