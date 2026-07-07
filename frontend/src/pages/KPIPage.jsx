@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react'
+import { useMemo } from 'react'
 import { Q_META, STATUSES } from '../constants'
+import { colors, spacing, borderRadius, typography, shadows } from '../theme'
 
 function useKPI(rows) {
   return useMemo(() => {
@@ -65,6 +66,25 @@ function useStatusDistribution(rows) {
   }, [rows])
 }
 
+const cardStyle = {
+  background: colors.white, border: `1.5px solid ${colors.border}`,
+  borderRadius: borderRadius.lg, padding: 18,
+}
+
+const cardTitle = {
+  fontWeight: typography.weights.bold, fontSize: typography.sizes.lg,
+  marginBottom: 14, color: colors.navy,
+}
+
+const barOuter = {
+  background: colors.border, borderRadius: 4, height: 7, overflow: 'hidden',
+}
+
+const barInner = (pct, color) => ({
+  width: `${pct}%`, height: '100%', background: color,
+  borderRadius: 4, transition: 'width .5s',
+})
+
 export default function KPIPage({ rows }) {
   const kpi = useKPI(rows)
   const quarterStats = useQuarterStats(rows)
@@ -73,8 +93,8 @@ export default function KPIPage({ rows }) {
   const statusDist = useStatusDistribution(rows)
 
   return (
-    <div style={{ padding: 20 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 14, marginBottom: 20 }}>
+    <div style={{ padding: spacing.xl }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 14, marginBottom: spacing.xl }}>
         {[
           { v: kpi.total, l: 'Всего инициатив', i: '📋' },
           { v: kpi.critical, l: 'Критических', i: '🔴' },
@@ -82,85 +102,82 @@ export default function KPIPage({ rows }) {
           { v: kpi.active, l: 'В работе', i: '🔵' },
           { v: kpi.risk, l: 'Под риском', i: '⚠️' },
           { v: `${kpi.potential.toLocaleString('ru')} ₽м`, l: 'Общий потенциал', i: '💰' },
-        ].map((k, i) => (
-          <div key={i} style={{ background: '#fff', border: '1.5px solid #DDE3EF', borderRadius: 10, padding: 18 }}>
+        ].map((k) => (
+          <div key={k.l} style={{ ...cardStyle, padding: 18 }}>
             <div style={{ fontSize: 20, marginBottom: 4 }}>{k.i}</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: '#1A2C4E', lineHeight: 1 }}>{k.v}</div>
-            <div style={{ fontSize: 10, color: '#6B7A99', marginTop: 4 }}>{k.l}</div>
+            <div style={{ fontSize: 24, fontWeight: typography.weights.bold, color: colors.navy, lineHeight: 1 }}>{k.v}</div>
+            <div style={{ fontSize: typography.sizes.xs, color: colors.textSecondary, marginTop: 4 }}>{k.l}</div>
           </div>
         ))}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        <div style={{ background: '#fff', border: '1.5px solid #DDE3EF', borderRadius: 10, padding: 18 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 14, color: '#1A2C4E' }}>Прогресс по кварталам</div>
+        <div style={cardStyle}>
+          <div style={cardTitle}>Прогресс по кварталам</div>
           {quarterStats.map(q => (
-            <div key={q.q} style={{ marginBottom: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
-                <span style={{ fontWeight: 600 }}>{Q_META[q.q]?.label || q.q}</span>
-                <span style={{ color: '#6B7A99' }}>{q.done}/{q.total} · {q.pct}%</span>
+            <div key={q.q} style={{ marginBottom: spacing.md }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: typography.sizes.sm, marginBottom: 4 }}>
+                <span style={{ fontWeight: typography.weights.semibold }}>{Q_META[q.q]?.label || q.q}</span>
+                <span style={{ color: colors.textSecondary }}>{q.done}/{q.total} · {q.pct}%</span>
               </div>
-              <div style={{ background: '#DDE3EF', borderRadius: 4, height: 7, overflow: 'hidden' }}>
-                <div style={{ width: `${q.pct}%`, height: '100%', background: Q_META[q.q]?.stripe || '#2E5FA3', borderRadius: 4, transition: 'width .5s' }} />
+              <div style={barOuter}>
+                <div style={barInner(q.pct, Q_META[q.q]?.stripe || colors.blue)} />
               </div>
             </div>
           ))}
         </div>
 
-        <div style={{ background: '#fff', border: '1.5px solid #DDE3EF', borderRadius: 10, padding: 18 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 14, color: '#1A2C4E' }}>Распределение по статусам</div>
-          {statusDist.map(s => {
-            const meta = STATUSES.find(st => st.id === s.status)
-            return (
-              <div key={s.status} style={{ marginBottom: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 3 }}>
-                  <span style={{ fontWeight: 600, color: meta?.color }}>{meta?.icon} {s.label}</span>
-                  <span style={{ color: '#6B7A99' }}>{s.count} ({s.pct}%)</span>
-                </div>
-                <div style={{ background: '#DDE3EF', borderRadius: 4, height: 5, overflow: 'hidden' }}>
-                  <div style={{ width: `${s.pct}%`, height: '100%', background: meta?.color || '#6B7A99', borderRadius: 4, transition: 'width .5s' }} />
-                </div>
+        <div style={cardStyle}>
+          <div style={cardTitle}>Распределение по статусам</div>
+          {statusDist.map(s => (
+            <div key={s.status} style={{ marginBottom: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: typography.sizes.sm, marginBottom: 3 }}>
+                <span style={{ fontWeight: typography.weights.semibold }}>{s.label}</span>
+                <span style={{ color: colors.textSecondary }}>{s.count} ({s.pct}%)</span>
               </div>
-            )
-          })}
+              <div style={{ ...barOuter, height: 5 }}>
+                <div style={barInner(s.pct, colors.blue)} />
+              </div>
+            </div>
+          ))}
         </div>
 
-        <div style={{ background: '#fff', border: '1.5px solid #DDE3EF', borderRadius: 10, padding: 18 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 14, color: '#1A2C4E' }}>Потенциал по аккаунтам</div>
+        <div style={cardStyle}>
+          <div style={cardTitle}>Потенциал по аккаунтам</div>
           {accountStats.map(ac => (
-            <div key={ac.account} style={{ marginBottom: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
-                <span style={{ fontWeight: 600 }}>{ac.account}</span>
-                <span style={{ color: '#6B7A99' }}>{ac.potential.toLocaleString('ru')} ₽м · {ac.pct}%</span>
+            <div key={ac.account} style={{ marginBottom: spacing.md }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: typography.sizes.sm, marginBottom: 4 }}>
+                <span style={{ fontWeight: typography.weights.semibold }}>{ac.account}</span>
+                <span style={{ color: colors.textSecondary }}>{ac.potential.toLocaleString('ru')} ₽м · {ac.pct}%</span>
               </div>
-              <div style={{ background: '#DDE3EF', borderRadius: 4, height: 7, overflow: 'hidden' }}>
-                <div style={{ width: `${ac.pct}%`, height: '100%', background: '#2E5FA3', borderRadius: 4 }} />
+              <div style={barOuter}>
+                <div style={barInner(ac.pct, colors.blue)} />
               </div>
             </div>
           ))}
         </div>
 
-        <div style={{ background: '#fff', border: '1.5px solid #DDE3EF', borderRadius: 10, padding: 18 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 14, color: '#1A2C4E' }}>Нагрузка по ответственным</div>
+        <div style={cardStyle}>
+          <div style={cardTitle}>Нагрузка по ответственным</div>
           {ownerStats.map(o => (
-            <div key={o.owner} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, fontSize: 11 }}>
+            <div key={o.owner} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, fontSize: typography.sizes.sm }}>
               <div style={{
-                width: 28, height: 28, borderRadius: '50%', background: '#2E5FA3', color: '#fff',
+                width: 28, height: 28, borderRadius: '50%', background: colors.blue, color: colors.textOnDark,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontWeight: 700, fontSize: 11, flexShrink: 0,
+                fontWeight: typography.weights.bold, fontSize: typography.sizes.sm, flexShrink: 0,
               }}>
                 {(o.owner || '?')[0]}
               </div>
               <div>
-                <div style={{ fontWeight: 600 }}>{o.owner}</div>
-                <div style={{ color: '#6B7A99', fontSize: 10 }}>{o.total} инициатив · {o.done} выполнено</div>
+                <div style={{ fontWeight: typography.weights.semibold }}>{o.owner}</div>
+                <div style={{ color: colors.textSecondary, fontSize: typography.sizes.xs }}>{o.total} инициатив · {o.done} выполнено</div>
               </div>
               <div style={{ marginLeft: 'auto', display: 'flex', gap: 3 }}>
                 {rows.filter(r => r.owner === o.owner).slice(0, 5).map(r => (
                   <div key={r.id} title={r.action}
                     style={{
                       width: 8, height: 8, borderRadius: '50%',
-                      background: (STATUSES.find(s => s.id === r.status) || {}).color || '#ccc',
+                      background: colors.blue,
                     }}
                   />
                 ))}

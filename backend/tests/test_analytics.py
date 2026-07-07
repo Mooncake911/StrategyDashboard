@@ -11,13 +11,13 @@ SAMPLE_INITIATIVES = [
 
 
 class TestAnalytics:
-    async def _seed(self, client: AsyncClient):
+    async def _seed(self, client: AsyncClient, headers: dict):
         for item in SAMPLE_INITIATIVES:
-            await client.post("/api/initiatives", json=item)
+            await client.post("/api/initiatives", json=item, headers=headers)
 
-    async def test_kpi_summary(self, client: AsyncClient):
-        await self._seed(client)
-        resp = await client.get("/api/analytics/kpi")
+    async def test_kpi_summary(self, client: AsyncClient, auth_headers: dict):
+        await self._seed(client, auth_headers)
+        resp = await client.get("/api/analytics/kpi", headers=auth_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["total"] == 5
@@ -29,16 +29,16 @@ class TestAnalytics:
         assert round(data["potential"], 1) == 150.0
         assert data["closed_potential"] == 20
 
-    async def test_empty_kpi(self, client: AsyncClient):
-        resp = await client.get("/api/analytics/kpi")
+    async def test_empty_kpi(self, client: AsyncClient, auth_headers: dict):
+        resp = await client.get("/api/analytics/kpi", headers=auth_headers)
         data = resp.json()
         assert data["total"] == 0
         assert data["pct"] == 0
         assert data["done"] == 0
 
-    async def test_quarter_stats(self, client: AsyncClient):
-        await self._seed(client)
-        resp = await client.get("/api/analytics/by-quarter")
+    async def test_quarter_stats(self, client: AsyncClient, auth_headers: dict):
+        await self._seed(client, auth_headers)
+        resp = await client.get("/api/analytics/by-quarter", headers=auth_headers)
         data = resp.json()
         q_map = {q["q"]: q for q in data}
         assert q_map["Q1"]["total"] == 2
@@ -47,20 +47,20 @@ class TestAnalytics:
         assert q_map["Q3"]["total"] == 1
         assert "Q4" not in q_map
 
-    async def test_account_stats(self, client: AsyncClient):
-        await self._seed(client)
-        resp = await client.get("/api/analytics/by-account")
+    async def test_account_stats(self, client: AsyncClient, auth_headers: dict):
+        await self._seed(client, auth_headers)
+        resp = await client.get("/api/analytics/by-account", headers=auth_headers)
         data = resp.json()
         ac_map = {a["account"]: a for a in data}
         assert ac_map["Роснефть"]["potential"] == 50
         assert ac_map["ЛУКОЙЛ"]["potential"] == 70
 
-    async def test_owner_stats(self, client: AsyncClient):
-        await client.post("/api/initiatives", json={"q": "Q1", "owner": "Иван", "status": "done"})
-        await client.post("/api/initiatives", json={"q": "Q2", "owner": "Иван", "status": "active"})
-        await client.post("/api/initiatives", json={"q": "Q3", "owner": "Петр", "status": "done"})
+    async def test_owner_stats(self, client: AsyncClient, auth_headers: dict):
+        await client.post("/api/initiatives", json={"q": "Q1", "owner": "Иван", "status": "done"}, headers=auth_headers)
+        await client.post("/api/initiatives", json={"q": "Q2", "owner": "Иван", "status": "active"}, headers=auth_headers)
+        await client.post("/api/initiatives", json={"q": "Q3", "owner": "Петр", "status": "done"}, headers=auth_headers)
 
-        resp = await client.get("/api/analytics/by-owner")
+        resp = await client.get("/api/analytics/by-owner", headers=auth_headers)
         data = resp.json()
         own_map = {o["owner"]: o for o in data}
         assert own_map["Иван"]["total"] == 2
@@ -68,9 +68,9 @@ class TestAnalytics:
         assert own_map["Петр"]["total"] == 1
         assert own_map["Петр"]["done"] == 1
 
-    async def test_status_distribution(self, client: AsyncClient):
-        await self._seed(client)
-        resp = await client.get("/api/analytics/status-distribution")
+    async def test_status_distribution(self, client: AsyncClient, auth_headers: dict):
+        await self._seed(client, auth_headers)
+        resp = await client.get("/api/analytics/status-distribution", headers=auth_headers)
         data = resp.json()
         s_map = {s["status"]: s for s in data}
         assert s_map["done"]["count"] == 1

@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { STATUSES, sById } from '../constants'
+import { colors, borderRadius, typography, shadows } from '../theme'
 
-export default function StatusPill({ status, onChange, rowId }) {
+export default function StatusPill({ status, onChange, rowId, disabled = false }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -14,6 +15,18 @@ export default function StatusPill({ status, onChange, rowId }) {
   }, [])
 
   const s = sById[status] || STATUSES[0]
+
+  if (disabled) {
+    return (
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px',
+        borderRadius: 20, fontSize: 10, fontWeight: 600,
+        background: s.bg, color: s.color, whiteSpace: 'nowrap',
+      }}>
+        {s.icon} {s.label}
+      </span>
+    )
+  }
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
@@ -31,9 +44,9 @@ export default function StatusPill({ status, onChange, rowId }) {
       {open && (
         <div
           style={{
-            position: 'absolute', zIndex: 200, background: '#fff',
-            border: '1.5px solid #DDE3EF', borderRadius: 8,
-            boxShadow: '0 8px 24px rgba(0,0,0,.13)', minWidth: 155,
+            position: 'absolute', zIndex: 200, background: colors.white,
+            border: `1.5px solid ${colors.border}`, borderRadius: borderRadius.md,
+            boxShadow: shadows.dropdown, minWidth: 155,
             overflow: 'hidden', top: 'calc(100% + 4px)', left: 0,
           }}
         >
@@ -43,11 +56,11 @@ export default function StatusPill({ status, onChange, rowId }) {
               onClick={() => { onChange(rowId, o.id); setOpen(false) }}
               style={{
                 display: 'flex', alignItems: 'center', gap: 7, padding: '8px 12px',
-                fontSize: 11, fontWeight: o.id === status ? 700 : 400, cursor: 'pointer',
-                background: o.id === status ? '#F0F4FA' : '#fff',
+                fontSize: typography.sizes.sm, fontWeight: o.id === status ? typography.weights.bold : typography.weights.normal, cursor: 'pointer',
+                background: o.id === status ? colors.borderLight : colors.white,
               }}
-              onMouseEnter={e => e.currentTarget.style.background = '#F4F7FC'}
-              onMouseLeave={e => e.currentTarget.style.background = o.id === status ? '#F0F4FA' : '#fff'}
+              onMouseEnter={e => e.currentTarget.style.background = colors.bg}
+              onMouseLeave={e => e.currentTarget.style.background = o.id === status ? colors.borderLight : colors.white}
             >
               {o.icon} {o.label} {o.id === status && ' ✓'}
             </div>

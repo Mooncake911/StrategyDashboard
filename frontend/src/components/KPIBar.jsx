@@ -1,4 +1,4 @@
-import React from 'react'
+import { colors, borderRadius, typography } from '../theme'
 
 export default function KPIBar({ kpi }) {
   if (!kpi) return null
@@ -18,30 +18,30 @@ export default function KPIBar({ kpi }) {
         gap: 10, padding: '12px 20px',
       }}
     >
-      {items.map((item, i) => (
+      {items.map((item) => (
         <div
-          key={i}
+          key={item.l}
           style={{
-            background: item.accent ? '#1A2C4E' : '#fff',
-            border: `1.5px solid ${item.red ? '#C00000' : '#DDE3EF'}`,
-            borderRadius: 10, padding: '12px 14px',
+            background: item.accent ? colors.navy : colors.white,
+            border: `1.5px solid ${item.red ? colors.danger : colors.border}`,
+            borderRadius: borderRadius.lg, padding: '12px 14px',
           }}
         >
           <div
             style={{
-              fontSize: 22, fontWeight: 700,
-              color: item.accent ? '#fff' : item.red ? '#C00000' : '#1A2C4E',
+              fontSize: 22, fontWeight: typography.weights.bold,
+              color: item.accent ? colors.textOnDark : item.red ? colors.danger : colors.navy,
               lineHeight: 1,
             }}
           >
             {item.v}
           </div>
-          <div style={{ fontSize: 10, color: item.accent ? '#7EA8E0' : '#6B7A99', marginTop: 4 }}>
+          <div style={{ fontSize: typography.sizes.xs, color: item.accent ? colors.blueLight : colors.textSecondary, marginTop: 4 }}>
             {item.l}
           </div>
           {item.accent && (
             <div style={{ background: 'rgba(255,255,255,.2)', borderRadius: 4, height: 4, overflow: 'hidden', marginTop: 8 }}>
-              <div style={{ width: `${kpi.pct}%`, height: '100%', background: '#4A9EE8', borderRadius: 4, transition: 'width .5s' }} />
+              <div style={{ width: `${kpi.pct}%`, height: '100%', background: colors.blueBright, borderRadius: 4, transition: 'width .5s' }} />
             </div>
           )}
         </div>

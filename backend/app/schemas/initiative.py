@@ -16,6 +16,7 @@ class InitiativeBase(BaseModel):
     potential: float = 0.0
     next_date: str = ""
     comment: str = ""
+    group_id: int | None = None
 
 
 class InitiativeCreate(InitiativeBase):

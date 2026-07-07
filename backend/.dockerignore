@@ -10,3 +10,4 @@ pytest.ini
 .gitignore
 Dockerfile
 .dockerignore
+migrations/

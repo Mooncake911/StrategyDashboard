@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { colors, borderRadius, typography } from '../theme'
 
-export default function InlineCell({ value, onCommit, right, field, rowId }) {
+export default function InlineCell({ value, onCommit, right, field, rowId, editable = true }) {
   const [editing, setEditing] = useState(false)
   const [val, setVal] = useState(value ?? '')
   const inputRef = useRef(null)
@@ -21,6 +22,14 @@ export default function InlineCell({ value, onCommit, right, field, rowId }) {
     }
   }, [editing])
 
+  if (!editable) {
+    return (
+      <span style={{ display: 'block', textAlign: right ? 'right' : 'left', minHeight: 16 }}>
+        {val || <span style={{ color: '#aaa', fontStyle: 'italic' }}>—</span>}
+      </span>
+    )
+  }
+
   if (editing) {
     return (
       <input
@@ -33,8 +42,8 @@ export default function InlineCell({ value, onCommit, right, field, rowId }) {
           if (e.key === 'Escape') { setEditing(false); setVal(value ?? '') }
         }}
         style={{
-          width: '100%', border: '1.5px solid #2E5FA3', borderRadius: 4,
-          padding: '3px 6px', fontSize: 11, fontFamily: 'inherit', background: '#fff',
+          width: '100%', border: `1.5px solid ${colors.blue}`, borderRadius: 4,
+          padding: '3px 6px', fontSize: typography.sizes.sm, fontFamily: typography.fontFamily, background: colors.white,
         }}
       />
     )
@@ -48,7 +57,7 @@ export default function InlineCell({ value, onCommit, right, field, rowId }) {
         display: 'block', cursor: 'text', borderRadius: 3, padding: '2px 3px',
         margin: '-2px -3px', textAlign: right ? 'right' : 'left', minHeight: 16,
       }}
-      onMouseEnter={e => e.currentTarget.style.background = 'rgba(46,95,163,.08)'}
+      onMouseEnter={e => e.currentTarget.style.background = `${colors.blue}14`}
       onMouseLeave={e => e.currentTarget.style.background = ''}
     >
       {val || <span style={{ color: '#aaa', fontStyle: 'italic' }}>—</span>}

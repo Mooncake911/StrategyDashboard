@@ -385,3 +385,4 @@ cython_debug/
 /backend/data/strategy.db
 .vercel
 .env*
+!/backend/.env.example

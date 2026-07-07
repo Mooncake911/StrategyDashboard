@@ -1,6 +1,6 @@
 import client from './client'
 
-export const fetchInitiatives = (params = {}) =>
+export const fetchInitiatives = (params) =>
   client.get('/initiatives', { params }).then(r => r.data)
 
 export const createInitiative = (data) =>

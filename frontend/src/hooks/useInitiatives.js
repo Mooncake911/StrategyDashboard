@@ -1,67 +1,62 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import {
-  fetchInitiatives,
-  createInitiative,
-  updateInitiative,
-  deleteInitiative,
-  setStatus,
-} from '../api/initiatives'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import * as api from '../api/initiatives'
 
-export function useInitiatives() {
-  const [rows, setRows] = useState([])
-  const rowsRef = useRef(rows)
+export function useInitiatives(groupId) {
+  const qc = useQueryClient()
+  const key = ['initiatives', groupId]
 
-  useEffect(() => { rowsRef.current = rows }, [rows])
+  const { data: rows = [] } = useQuery({
+    queryKey: key,
+    queryFn: () => api.fetchInitiatives(groupId ? { group_id: groupId } : {}),
+  })
 
-  const load = useCallback(async () => {
-    try {
-      const data = await fetchInitiatives()
-      setRows(data)
-    } catch { /* ignore */ }
-  }, [])
+  const updateRow = useMutation({
+    mutationFn: ({ id, data }) => api.updateInitiative(id, data),
+    onMutate: async ({ id, data }) => {
+      await qc.cancelQueries(key)
+      const prev = qc.getQueryData(key)
+      qc.setQueryData(key, (old) => old?.map((r) => (r.id === id ? { ...r, ...data } : r)))
+      return { prev }
+    },
+    onError: (_, { id, data }, ctx) => qc.setQueryData(key, ctx.prev),
+  })
 
-  useEffect(() => { load() }, [load])
+  const changeStatus = useMutation({
+    mutationFn: ({ id, status }) => api.setStatus(id, status),
+    onMutate: async ({ id, status }) => {
+      await qc.cancelQueries(key)
+      const prev = qc.getQueryData(key)
+      qc.setQueryData(key, (old) => old?.map((r) => (r.id === id ? { ...r, status } : r)))
+      return { prev }
+    },
+    onError: (_, __, ctx) => qc.setQueryData(key, ctx.prev),
+  })
 
-  const updateRow = async (id, field, value) => {
-    const snapshot = rowsRef.current
-    setRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r))
-    try {
-      await updateInitiative(id, { [field]: value })
-    } catch {
-      setRows(snapshot)
-    }
-  }
+  const removeRow = useMutation({
+    mutationFn: (id) => api.deleteInitiative(id),
+    onMutate: async (id) => {
+      await qc.cancelQueries(key)
+      const prev = qc.getQueryData(key)
+      qc.setQueryData(key, (old) => old?.filter((r) => r.id !== id))
+      return { prev }
+    },
+    onError: (_, __, ctx) => qc.setQueryData(key, ctx.prev),
+  })
 
-  const changeStatus = async (id, status) => {
-    const snapshot = rowsRef.current
-    setRows(prev => prev.map(r => r.id === id ? { ...r, status } : r))
-    try {
-      await setStatus(id, status)
-    } catch {
-      setRows(snapshot)
-    }
-  }
-
-  const removeRow = async (id) => {
-    const snapshot = rowsRef.current
-    setRows(prev => prev.filter(r => r.id !== id))
-    try {
-      await deleteInitiative(id)
-    } catch {
-      setRows(snapshot)
-    }
-  }
-
-  const addRow = async (data) => {
-    try {
-      const created = await createInitiative(data)
-      setRows(prev => [...prev, created])
-      return created
-    } catch { return null }
-  }
+  const addRow = useMutation({
+    mutationFn: (data) => api.createInitiative(groupId ? { ...data, group_id: groupId } : data),
+    onSuccess: (created) => {
+      qc.setQueryData(key, (old) => [...(old || []), created])
+    },
+  })
 
   return {
-    rows, reload: load,
-    updateRow, changeStatus, removeRow, addRow,
+    rows,
+    reload: () => qc.invalidateQueries(key),
+    updateRow: (id, field, value) => updateRow.mutate({ id, data: { [field]: value } }),
+    changeStatus: (id, status) => changeStatus.mutate({ id, status }),
+    removeRow: (id) => removeRow.mutate(id),
+    addRow: (data) => addRow.mutateAsync(data),
+    saving: updateRow.isPending || changeStatus.isPending || removeRow.isPending || addRow.isPending,
   }
 }

@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import engine
 from app.models import Base
-from app.routers import initiatives, contacts, analytics, import_export
+from app.routers import auth, users, groups, initiatives, contacts, analytics, import_export
 
 
 @asynccontextmanager
@@ -25,6 +25,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(groups.router)
 app.include_router(initiatives.router)
 app.include_router(contacts.router)
 app.include_router(analytics.router)
